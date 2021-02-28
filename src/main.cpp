@@ -9,13 +9,13 @@
 // Lock combo is 4219
 
 /* ----------------- TONES -------------------------*/
-#define PIN_TONE_BUTTON_1 1
-#define PIN_TONE_BUTTON_2 2
-#define PIN_TONE_BUTTON_3 3
-#define PIN_TONE_BUTTON_4 4
-#define PIN_TONE_BUTTON_5 5
-#define PIN_TONE_PLAY     6
-#define PIN_POWER_LIGHT   7
+#define PIN_TONE_BUTTON_1 2
+#define PIN_TONE_BUTTON_2 3
+#define PIN_TONE_BUTTON_3 4
+#define PIN_TONE_BUTTON_4 5
+#define PIN_TONE_BUTTON_5 6
+#define PIN_TONE_PLAY     7
+#define PIN_POWER_LIGHT   8
 #define PIN_COMM          13
 
 ButtonDebounce tone1(PIN_TONE_BUTTON_1, 100);
