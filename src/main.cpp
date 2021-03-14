@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #define PJON_MAX_PACKETS 4
-#define PJON_PACKET_MAX_LENGTH 33
+#define PJON_PACKET_MAX_LENGTH 52
 #include <PJONSoftwareBitBang.h>
 #include <arduino-timer.h>
 #include <ButtonDebounce.h>
@@ -18,16 +18,16 @@
 #define PIN_POWER_LIGHT   8
 #define PIN_COMM          13
 
-ButtonDebounce tone1(PIN_TONE_BUTTON_1, 100);
-ButtonDebounce tone2(PIN_TONE_BUTTON_2, 100);
-ButtonDebounce tone3(PIN_TONE_BUTTON_3, 100);
-ButtonDebounce tone4(PIN_TONE_BUTTON_4, 100);
-ButtonDebounce tone5(PIN_TONE_BUTTON_5, 100);
-ButtonDebounce tonePlay(PIN_TONE_PLAY, 100);
+ButtonDebounce tone1(PIN_TONE_BUTTON_1, 50);
+ButtonDebounce tone2(PIN_TONE_BUTTON_2, 50);
+ButtonDebounce tone3(PIN_TONE_BUTTON_3, 50);
+ButtonDebounce tone4(PIN_TONE_BUTTON_4, 50);
+ButtonDebounce tone5(PIN_TONE_BUTTON_5, 50);
+ButtonDebounce tonePlay(PIN_TONE_PLAY, 50);
 
 #define NOTES_LENGTH 15
 uint8_t numNotesPlayed = 0;
-int song[NOTES_LENGTH];
+uint8_t song[NOTES_LENGTH];
 int notesPlayed[NOTES_LENGTH];
 boolean activated = false;
 
@@ -49,6 +49,10 @@ void commReceive(uint8_t *data, uint16_t len, const PJON_Packet_Info &info) {
   if (data[0] == 'A') {
     activated = true;
     digitalWrite(PIN_POWER_LIGHT, HIGH);
+    uint8_t msg[NOTES_LENGTH+1];
+    msg[0] = 'S';
+    memcpy(&msg[1],song,NOTES_LENGTH);
+    send(msg, NOTES_LENGTH+1);
   } else if (data[0] == 'W') {  //player has won
 
   } else if (data[0] == 'L') {  //player has lost
@@ -56,12 +60,14 @@ void commReceive(uint8_t *data, uint16_t len, const PJON_Packet_Info &info) {
   }
 }
 
-void sendLcd(char *line1, char *line2) {
-  uint8_t msg[33];
+void sendLcd(const char *line1, const char *line2) {
+  uint8_t msg[35];
   msg[0] = 'L';
-  strncpy((char *)&msg[1], line1, 16);
-  strncpy((char *)&msg[17], line2, 16);
-  send(msg, 33);
+  strncpy((char *)&msg[1], line1, 17);
+  strncpy((char *)&msg[18], line2, 17);
+  Serial.print("Sending ");
+  Serial.println((char *)msg);
+  send(msg, 35);
 }
 
 void sendMp3(int track) {
@@ -71,11 +77,17 @@ void sendMp3(int track) {
   send(msg, 2);
 }
 
-void sendTone(int tone) {
+void sendTone(uint8_t tone) {
+  notesPlayed[numNotesPlayed++] = tone;
   uint8_t msg[2];
   msg[0] = 'T';
   msg[1] = tone;
   send(msg, 2);
+  char line2[17];
+  for (int i=0;i<numNotesPlayed;i++) {
+    sprintf(&line2[i], "%i", (notesPlayed[i]+1));
+  }
+  sendLcd("Song",line2);
 }
 
 void initComm() {
@@ -88,6 +100,7 @@ void initComm() {
 
 void checkNotes() {
   if (numNotesPlayed != NOTES_LENGTH) return;
+  numNotesPlayed = 0;
   for (int i = 0; i < NOTES_LENGTH; i++) {
     if (notesPlayed[i] != song[i]) return;
   }
@@ -98,43 +111,45 @@ void checkNotes() {
 }
 
 void tone1Pressed(const int state) {
-  if (activated && numNotesPlayed < NOTES_LENGTH) {
+  if (activated && state == LOW && numNotesPlayed < NOTES_LENGTH) {
     sendTone(0);
     checkNotes();
   }
 }
 
 void tone2Pressed(const int state) {
-  if (activated && numNotesPlayed < NOTES_LENGTH) {
+  if (activated && state == LOW && numNotesPlayed < NOTES_LENGTH) {
     sendTone(1);
     checkNotes();
   }
 }
 
 void tone3Pressed(const int state) {
-  if (activated && numNotesPlayed < NOTES_LENGTH) {
+  if (activated && state == LOW && numNotesPlayed < NOTES_LENGTH) {
     sendTone(2);
     checkNotes();
   }
 }
 
 void tone4Pressed(const int state) {
-  if (activated && numNotesPlayed < NOTES_LENGTH) {
+  if (activated && state == LOW && numNotesPlayed < NOTES_LENGTH) {
     sendTone(3);
     checkNotes();
   }
 }
 
 void tone5Pressed(const int state) {
-  if (activated && numNotesPlayed < NOTES_LENGTH) {
+  if (activated && state == LOW && numNotesPlayed < NOTES_LENGTH) {
     sendTone(4);
     checkNotes();
   }
 }
 
 void tonePlayPressed(const int state) {
-  if (activated) {
+  if (activated && state == LOW) {
     send((uint8_t *)"P", 1);
+    numNotesPlayed = 0;
+    sendLcd(" ", " ");
   }
 }
 
@@ -162,6 +177,7 @@ void initTone() {
 
 void setup() {
   delay(2000);  //let Master start first
+  randomSeed(analogRead(0));
   initComm();
   initTone();
 }
@@ -169,4 +185,10 @@ void setup() {
 void loop() {
   bus.update();
   bus.receive(750);
+  tone1.update();
+  tone2.update();
+  tone3.update();
+  tone4.update();
+  tone5.update();
+  tonePlay.update();
 }
