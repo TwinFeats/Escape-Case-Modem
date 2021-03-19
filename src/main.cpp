@@ -35,7 +35,13 @@ PJON<SoftwareBitBang> bus(11);
 
 void send(uint8_t *msg, uint8_t len) {
   bus.send(1, msg, len);
-  bus.update();
+  while (bus.update()) {};//wait for send to be completed
+}
+
+void send(const char *msg, int len) {
+  uint8_t buf[35];
+  memcpy(buf, msg, len);
+  send(buf, len);
 }
 
 void error_handler(uint8_t code, uint16_t data, void *custom_pointer) {
@@ -65,8 +71,6 @@ void sendLcd(const char *line1, const char *line2) {
   msg[0] = 'L';
   strncpy((char *)&msg[1], line1, 17);
   strncpy((char *)&msg[18], line2, 17);
-  Serial.print("Sending ");
-  Serial.println((char *)msg);
   send(msg, 35);
 }
 
@@ -105,7 +109,7 @@ void checkNotes() {
     if (notesPlayed[i] != song[i]) return;
   }
   sendMp3(TRACK_MODEM_ACQUIRED);
-  send((uint8_t *)"D", 1);
+  send("D", 1);
   activated = false;
   digitalWrite(PIN_POWER_LIGHT, LOW);
 }
@@ -147,7 +151,7 @@ void tone5Pressed(const int state) {
 
 void tonePlayPressed(const int state) {
   if (activated && state == LOW) {
-    send((uint8_t *)"P", 1);
+    send("P", 1);
     numNotesPlayed = 0;
     sendLcd(" ", " ");
   }
@@ -176,6 +180,7 @@ void initTone() {
 
 
 void setup() {
+  Serial.begin(9600);
   delay(2000);  //let Master start first
   randomSeed(analogRead(0));
   initComm();
