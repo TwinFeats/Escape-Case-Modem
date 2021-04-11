@@ -55,10 +55,6 @@ void commReceive(uint8_t *data, uint16_t len, const PJON_Packet_Info &info) {
   if (data[0] == 'A') {
     activated = true;
     digitalWrite(PIN_POWER_LIGHT, HIGH);
-    uint8_t msg[NOTES_LENGTH+1];
-    msg[0] = 'S';
-    memcpy(&msg[1],song,NOTES_LENGTH);
-    send(msg, NOTES_LENGTH+1);
   } else if (data[0] == 'W') {  //player has won
 
   } else if (data[0] == 'L') {  //player has lost
@@ -69,6 +65,14 @@ void commReceive(uint8_t *data, uint16_t len, const PJON_Packet_Info &info) {
 void sendLcd(const char *line1, const char *line2) {
   uint8_t msg[35];
   msg[0] = 'L';
+  strncpy((char *)&msg[1], line1, 17);
+  strncpy((char *)&msg[18], line2, 17);
+  send(msg, 35);
+}
+
+void sendLcdImmediate(const char *line1, const char *line2) {
+  uint8_t msg[35];
+  msg[0] = 'Z';
   strncpy((char *)&msg[1], line1, 17);
   strncpy((char *)&msg[18], line2, 17);
   send(msg, 35);
@@ -91,7 +95,7 @@ void sendTone(uint8_t tone) {
   for (int i=0;i<numNotesPlayed;i++) {
     sprintf(&line2[i], "%i", (notesPlayed[i]+1));
   }
-  sendLcd("Song",line2);
+  sendLcdImmediate("Sequence",line2);
 }
 
 void initComm() {
@@ -153,7 +157,7 @@ void tonePlayPressed(const int state) {
   if (activated && state == LOW) {
     send("P", 1);
     numNotesPlayed = 0;
-    sendLcd(" ", " ");
+    sendLcdImmediate(" ", " ");
   }
 }
 
@@ -175,9 +179,22 @@ void initTone() {
   for (int i = 0; i < NOTES_LENGTH; i++) {
     song[i] = random(5);
   }
+  uint8_t msg[NOTES_LENGTH+1];
+  msg[0] = 'S';
+  memcpy(&msg[1],song,NOTES_LENGTH);
+  send(msg, NOTES_LENGTH+1);
 }
 /* --------------END TONES -------------------------*/
 
+/*
+Do whatever is needed to ensure this panel is fully functional.
+*/
+void startup() {
+  digitalWrite(PIN_POWER_LIGHT, HIGH);
+  sendLcd("Modem", "Ready");
+  delay(1000);
+  digitalWrite(PIN_POWER_LIGHT, LOW);
+}
 
 void setup() {
   Serial.begin(9600);
@@ -185,6 +202,7 @@ void setup() {
   randomSeed(analogRead(0));
   initComm();
   initTone();
+  startup();
 }
 
 void loop() {
